@@ -1,0 +1,15 @@
+[project]
+name = "playwrite_scraping"
+version = "0.1.0"
+description = "Playwright scraping script for coursefinder.ai login email check"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.42.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.23.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+start = "scrape:main"
+serve = "run_api:main"

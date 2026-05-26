@@ -1,0 +1,92 @@
+[
+  {
+    "name": "ASP.NET_SessionId",
+    "value": "gb4az41aaejb2obd5l5yl3g3",
+    "domain": "www.coursefinder.ai",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "kbtc",
+    "value": "ktt_3ae3d56fc57b4cb4a1a600b133735977",
+    "domain": ".login.coursefinder.ai",
+    "path": "/",
+    "expires": 1810890605.158814,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "chatBotPopover",
+    "value": "true",
+    "domain": "www.coursefinder.ai",
+    "path": "/",
+    "expires": 1813914631.17996,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_sleek_session",
+    "value": "%7B%22init%22%3A%222026-05-21T09%3A10%3A34.244Z%22%7D",
+    "domain": ".coursefinder.ai",
+    "path": "/",
+    "expires": 1787130634,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga_F28XLYHSZD",
+    "value": "GS2.1.s1779354635$o1$g0$t1779354635$j60$l0$h0",
+    "domain": ".coursefinder.ai",
+    "path": "/",
+    "expires": 1813914635.314671,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "_ga",
+    "value": "GA1.1.1986194600.1779354635",
+    "domain": ".coursefinder.ai",
+    "path": "/",
+    "expires": 1813914635.314934,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "enduser_session_id",
+    "value": "0x4724e1c8f01c4583a05ad7cfe79aa8ec",
+    "domain": ".login.coursefinder.ai",
+    "path": "/",
+    "expires": 1779871310.451647,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": ".AspNet.Cookies",
+    "value": "KV98-mB8LF-mTM1_qdpfRdDxXjWJKIfZLorzSQVMB7F3QYt3tZa5xPEzXoCuRIaESEDgB6aLXivKbTYk9XnFNKP4jfcoMV13OcAQteKMyZNrT5Gw2ToIghVJVLe2jBWH165wowB7gCfbBPEsj-27VuWLa4XRJQEp8g280e-BDXt64DM54zSS4OgojeR8Sn3lGBp_Cq-bPU0VjgdHDJw5EIbg7z1XbAJlKbpL50m7v8TQ8ts7UDWmui8E703OzkxmQ2UgHj8jQ673bjmdTYWJRtbYTg9k2B0kzcBCa3998iMo2bbZwIg_jsR2BsCCRORpVuQ3SAtwuh6OzfCCn-MW2zD3xTlX_wS-IZsnXaEkPcpJVVTIxVF4KZs-qzYl-6iI_itFk2TZtZ5_K2718Q0Mnylo6tuOc1fvA3M7wBvCCl1qqXJTtabTtJav-nPINwrIyBHziFAKjkBcVOPhdvE03_QnQuJXf_P1iFnV0dKCqGJjy1zPHMMw7PMsiJhRF-UhruKjD-U4WUXcHhxIG1eM_GOWSjmmJz8k4cUs8OQI4NPAKy6xmQOAVPO52AiFpp40YvoeazNfpwJU8FsH12c6zZG_-B9TzkAOXUvTD4NPBHwRd9l9ZE0Rk9Je0CBDfJQAHy2uL42wABSw_1KHKItBNfY4MxJEjynruykiT3KFMomzU2skW4_DRVBRXWAsFIC7Oq17VjRY35rSVGzq5j-huibuCbdLZAcng8B9Q1iomED2eeDsOezU9MswqQqO4-YIhD896aSUHAOV63DfDQtZYNB94jw3GdjbN6BVGWsqW3QPquE6OWLkVeTAsdD8wM2FyEDYz3aowI6fNkc4u9vFbSBMbm-aj8qVzCU90JBgyP8AMuoOl1AhdCXjuaJYdFC5F7YROnkrxOvX2enmD7pwhZI_KexkQZjABOtBs8jqxFoBd1OW2Eagtcoe8GsMlM3wyhzG1u8EnfyLbQDcCJ1Sk23q9g7KNdKXBdlc2xgbG7d_Jtwl9Irmi4C97etEwQrg66nYS8r0giL7Lmujy7FqOANxDbQRCgMhzS8UtlXgVZDoLScFrfCd_BJjSo6UtAUZ_xdtOEsp0nIc8mEib_dv9vGpKqnMFir2oc3J6F5UhjBveCtcUqgNmPPeH-x8E5_KJum6GKkuzziQkAD97D7fHQU0M7CxhPoAuleis4s-CWk",
+    "domain": "www.coursefinder.ai",
+    "path": "/",
+    "expires": -1,
+    "httpOnly": true,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "userSessionId",
+    "value": "ZmUzY2JlOWYtOTMwMy00NTg3LWE5ZDktZTMxNTM1OGMyNzJl",
+    "domain": "www.coursefinder.ai",
+    "path": "/",
+    "expires": 1780044111.340736,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]
