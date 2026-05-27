@@ -1,3 +1,8 @@
+# =========================================================
+# IMPORTS
+# =========================================================
+
+# Standard library imports
 import json
 import os
 import random
@@ -5,11 +10,20 @@ import string
 import subprocess
 import sys
 import time
+
+# Date & time utilities
 from datetime import datetime
+
+# File path handling
 from pathlib import Path
+
+# Typing support
 from typing import Any, Dict, List, Optional, Tuple
 
+# Load environment variables from .env
 from dotenv import load_dotenv
+
+# Playwright sync API imports
 from playwright.sync_api import (
     Error as PlaywrightError,
     Page,
@@ -17,32 +31,62 @@ from playwright.sync_api import (
     sync_playwright,
 )
 
-DOWNLOAD_DIR = Path(os.getenv("DOWNLOADS_DIR", "downloads"))
-COOKIES_PATH = Path(os.getenv("COOKIES_PATH", "cookies.json"))
+# =========================================================
+# CONFIGURATION
+# =========================================================
 
+# Directory where downloaded Excel files will be stored
+DOWNLOAD_DIR = Path(
+    os.getenv("DOWNLOADS_DIR", "downloads")
+)
+
+# Cookie storage file
+COOKIES_PATH = Path(
+    os.getenv("COOKIES_PATH", "cookies.json")
+)
+
+# URLs
 DEFAULT_LOGIN_URL = "https://www.coursefinder.ai/"
-DEFAULT_DASHBOARD_URL = "https://www.coursefinder.ai/dashboard"
+DEFAULT_DASHBOARD_URL = (
+    "https://www.coursefinder.ai/dashboard"
+)
 
+# Timeout configuration
 DEFAULT_TIMEOUT_SECONDS = int(
     os.getenv("SCRAPER_TIMEOUT", "30")
 )
 
-DEFAULT_TIMEOUT_MS = DEFAULT_TIMEOUT_SECONDS * 1000
+DEFAULT_TIMEOUT_MS = (
+    DEFAULT_TIMEOUT_SECONDS * 1000
+)
 
+# =========================================================
+# CUSTOM EXCEPTION
+# =========================================================
 
 class ScraperError(Exception):
+    """
+    Custom exception used throughout scraper.
+    """
     pass
 
 
 # =========================================================
-# HELPERS
+# HELPER FUNCTIONS
 # =========================================================
 
 def load_env_vars() -> None:
+    """
+    Load .env variables into environment.
+    """
+
     load_dotenv()
 
 
 def get_env_credentials() -> Tuple[str, str]:
+    """
+    Read scraper credentials from .env file.
+    """
 
     load_env_vars()
 
@@ -57,15 +101,20 @@ def get_env_credentials() -> Tuple[str, str]:
     ).strip()
 
     if not email or not password:
+
         raise ScraperError(
-            "SCRAPER_EMAIL and SCRAPER_PASSWORD "
-            "must exist in .env"
+            "SCRAPER_EMAIL and "
+            "SCRAPER_PASSWORD must exist in .env"
         )
 
     return email, password
 
 
 def ensure_download_dir() -> None:
+    """
+    Create downloads directory if it doesn't exist.
+    """
+
     DOWNLOAD_DIR.mkdir(
         parents=True,
         exist_ok=True
@@ -73,6 +122,10 @@ def ensure_download_dir() -> None:
 
 
 def random_email() -> str:
+    """
+    Generate random email.
+    Mostly useful for testing.
+    """
 
     token = ''.join(
         random.choices(
@@ -86,10 +139,15 @@ def random_email() -> str:
 
 
 def safe_count(locator_or_selector, page=None) -> int:
+    """
+    Safely count matching Playwright locators.
+    Prevents scraper crash on invalid selectors.
+    """
 
     try:
 
         if isinstance(locator_or_selector, str):
+
             return page.locator(
                 locator_or_selector
             ).count()
@@ -101,13 +159,23 @@ def safe_count(locator_or_selector, page=None) -> int:
 
 
 def safe_click(locator, page: Page) -> None:
+    """
+    Robust click helper.
+
+    Tries:
+    1. Normal click
+    2. Force click
+    3. JavaScript click fallback
+    """
 
     try:
+
         locator.click()
 
     except Exception:
 
         try:
+
             locator.click(force=True)
 
         except Exception:
@@ -122,7 +190,14 @@ def safe_click(locator, page: Page) -> None:
                 )
 
 
-def save_cookies(context, path=COOKIES_PATH):
+def save_cookies(
+    context,
+    path=COOKIES_PATH
+):
+    """
+    Save browser cookies locally.
+    Helps avoid repeated logins.
+    """
 
     cookies = context.cookies()
 
@@ -138,7 +213,13 @@ def save_cookies(context, path=COOKIES_PATH):
         )
 
 
-def load_cookies(context, path=COOKIES_PATH):
+def load_cookies(
+    context,
+    path=COOKIES_PATH
+):
+    """
+    Load saved cookies into browser context.
+    """
 
     try:
 
@@ -163,6 +244,9 @@ def load_cookies(context, path=COOKIES_PATH):
 
 
 def is_session_active(page: Page) -> bool:
+    """
+    Check whether user is already logged in.
+    """
 
     if "login" in page.url.lower():
         return False
@@ -181,6 +265,9 @@ def _sanitize_slug(
     text: str,
     max_len: int = 40
 ) -> str:
+    """
+    Clean filename-safe text.
+    """
 
     safe = ''.join(
         c for c in text
@@ -202,6 +289,9 @@ def _make_output_path(
     suggested_filename: str,
     query: str
 ) -> Path:
+    """
+    Generate final output file path.
+    """
 
     ensure_download_dir()
 
@@ -236,7 +326,11 @@ def login_with_credentials(
     email: str,
     password: str
 ) -> None:
+    """
+    Login to CourseFinder AI.
+    """
 
+    # Find login button
     login_button = page.locator(
         'button:has-text("Login")'
     )
@@ -253,6 +347,7 @@ def login_with_credentials(
 
     page.wait_for_timeout(3000)
 
+    # Fill email
     email_input = page.locator(
         'input[type="email"]'
     )
@@ -261,6 +356,7 @@ def login_with_credentials(
 
     page.wait_for_timeout(1000)
 
+    # Continue
     continue_button = page.locator(
         'button:has-text("Continue")'
     )
@@ -272,6 +368,7 @@ def login_with_credentials(
 
     page.wait_for_timeout(3000)
 
+    # Fill password
     password_input = page.locator(
         'input[type="password"]'
     )
@@ -280,6 +377,7 @@ def login_with_credentials(
 
     page.wait_for_timeout(1000)
 
+    # Submit login
     continue_button = page.locator(
         'button:has-text("Continue")'
     )
@@ -291,6 +389,7 @@ def login_with_credentials(
 
     page.wait_for_timeout(5000)
 
+    # Save session cookies
     save_cookies(page.context)
 
 
@@ -298,49 +397,44 @@ def login_with_credentials(
 # NAVIGATION
 # =========================================================
 
-def navigate_to_search_program(page: Page) -> None:
+def navigate_to_search_program(
+    page: Page
+) -> None:
     """
-    Navigate safely to Search Program page.
+    Navigate to Search Program page.
+
     Handles:
-    - delayed auth redirects
-    - SPA rendering
-    - async hydration
-    - dashboard loading
+    - SPA rendering delay
+    - hydration issues
+    - async redirects
     """
 
     print("Navigating to dashboard...")
 
-    # =====================================================
-    # OPEN DASHBOARD
-    # =====================================================
-
+    # Open dashboard
     page.goto(
         DEFAULT_DASHBOARD_URL,
         wait_until="domcontentloaded",
         timeout=60000
     )
 
-    # Give React app time
+    # Give React app time to load
     page.wait_for_timeout(5000)
 
-    # =====================================================
-    # WAIT FOR PAGE TO STABILIZE
-    # =====================================================
-
+    # Wait for network to stabilize
     try:
+
         page.wait_for_load_state(
             "networkidle",
             timeout=15000
         )
+
     except Exception:
         pass
 
     page.wait_for_timeout(3000)
 
-    # =====================================================
-    # TRY MULTIPLE SEARCH PROGRAM SELECTORS
-    # =====================================================
-
+    # Multiple selectors for reliability
     selectors = [
         'button:has-text("Search Programs")',
         'text="Search Programs"',
@@ -350,12 +444,17 @@ def navigate_to_search_program(page: Page) -> None:
 
     search_program_button = None
 
+    # Try locating Search Program button
     for selector in selectors:
 
         try:
+
             locator = page.locator(selector)
 
-            count = safe_count(locator, page)
+            count = safe_count(
+                locator,
+                page
+            )
 
             if count == 0:
                 continue
@@ -363,12 +462,13 @@ def navigate_to_search_program(page: Page) -> None:
             for i in range(count):
 
                 try:
+
                     candidate = locator.nth(i)
 
-                    visible = candidate.is_visible()
+                    if candidate.is_visible():
 
-                    if visible:
                         search_program_button = candidate
+
                         break
 
                 except Exception:
@@ -380,29 +480,25 @@ def navigate_to_search_program(page: Page) -> None:
         except Exception:
             continue
 
-    # =====================================================
-    # FALLBACK DIRECT NAVIGATION
-    # =====================================================
-
+    # Fallback direct navigation
     if not search_program_button:
 
         print(
-            "Search Programs button not found."
-            " Navigating directly."
+            "Search Programs button not found. "
+            "Using direct navigation."
         )
 
-        page.goto("https://www.coursefinder.ai/search-program")
+        page.goto(
+            "https://www.coursefinder.ai/search-program"
+        )
 
         page.wait_for_timeout(5000)
 
         return
 
-    # =====================================================
-    # CLICK SEARCH PROGRAMS
-    # =====================================================
-
     print("Clicking Search Programs")
 
+    # Click button
     try:
 
         handle = (
@@ -431,10 +527,7 @@ def navigate_to_search_program(page: Page) -> None:
             page
         )
 
-    # =====================================================
-    # WAIT FOR SEARCH PAGE
-    # =====================================================
-
+    # Wait for URL
     try:
 
         page.wait_for_url(
@@ -447,10 +540,7 @@ def navigate_to_search_program(page: Page) -> None:
 
     page.wait_for_timeout(5000)
 
-    # =====================================================
-    # VERIFY SEARCH INPUT EXISTS
-    # =====================================================
-
+    # Verify search input exists
     search_input = page.locator(
         'input[placeholder*="Search Program"]'
     )
@@ -460,14 +550,22 @@ def navigate_to_search_program(page: Page) -> None:
         timeout=30000
     )
 
-    print("Successfully opened Search Program page")
+    print(
+        "Successfully opened Search Program page"
+    )
 
 
 # =========================================================
-# SELECT CURRENT PAGE
+# SELECT CURRENT PAGE RECORDS
 # =========================================================
 
-def click_select_all_checkbox(page: Page):
+def click_select_all_checkbox(
+    page: Page
+):
+    """
+    Click Select All checkbox
+    for current pagination page.
+    """
 
     page.wait_for_timeout(1500)
 
@@ -495,6 +593,7 @@ def click_select_all_checkbox(page: Page):
                 if not handle:
                     continue
 
+                # Find nearby checkbox
                 clicked = page.evaluate("""
                     element => {
 
@@ -558,9 +657,17 @@ def click_select_all_checkbox(page: Page):
 def click_next_pagination(
     page: Page
 ) -> bool:
+    """
+    Click next pagination arrow.
+
+    Returns:
+    - True -> next page exists
+    - False -> reached last page
+    """
 
     page.wait_for_timeout(1500)
 
+    # SVG arrow selector
     arrows = page.locator(
         'path[d="M9.5 18L15.5 12L9.5 6"]'
     )
@@ -581,6 +688,7 @@ def click_next_pagination(
             if not handle:
                 continue
 
+            # Traverse to clickable parent
             result = page.evaluate("""
                 element => {
 
@@ -652,6 +760,9 @@ def click_next_pagination(
 def select_all_results_across_pages(
     page: Page
 ):
+    """
+    Select records across all pages.
+    """
 
     max_pages = 100
 
@@ -662,8 +773,10 @@ def select_all_results_across_pages(
             f"{page_number + 1}"
         )
 
+        # Select current page records
         click_select_all_checkbox(page)
 
+        # Move next
         has_next = click_next_pagination(page)
 
         if not has_next:
@@ -682,6 +795,12 @@ def select_all_results_across_pages(
 def click_full_download_button(
     page: Page
 ):
+    """
+    Click main Download button.
+
+    Important:
+    Avoids 'Download Top 25'.
+    """
 
     page.wait_for_timeout(2000)
 
@@ -701,6 +820,7 @@ def click_full_download_button(
                 .lower()
             )
 
+            # Ignore Download Top 25
             if (
                 text != "download" or
                 "top 25" in text
@@ -712,6 +832,7 @@ def click_full_download_button(
             if not handle:
                 continue
 
+            # Ensure enabled
             enabled = page.evaluate("""
                 element => {
 
@@ -752,12 +873,15 @@ def click_full_download_button(
 
 
 # =========================================================
-# SELECT FIELDS
+# SELECT FIELDS MODAL
 # =========================================================
 
 def click_select_fields_button(
     page: Page
 ):
+    """
+    Open Select Fields modal.
+    """
 
     page.wait_for_timeout(2000)
 
@@ -809,6 +933,9 @@ def click_select_fields_button(
 def click_modal_select_all(
     page: Page
 ):
+    """
+    Select all export fields inside modal.
+    """
 
     page.wait_for_timeout(2000)
 
@@ -867,6 +994,9 @@ def click_modal_select_all(
 def click_download_to_excel(
     page: Page
 ):
+    """
+    Click final Download to Excel button.
+    """
 
     page.wait_for_timeout(2000)
 
@@ -910,15 +1040,19 @@ def click_download_to_excel(
 
 
 # =========================================================
-# MAIN SEARCH + DOWNLOAD
+# SEARCH + DOWNLOAD FLOW
 # =========================================================
 
 def search_program_and_download(
     page: Page,
     query: str
 ) -> Path:
+    """
+    Complete search + download workflow.
+    """
 
     if not query.strip():
+
         raise ScraperError(
             "Search query cannot be empty"
         )
@@ -937,10 +1071,12 @@ def search_program_and_download(
         timeout=DEFAULT_TIMEOUT_MS
     )
 
+    # Clear old query
     search_input.first.fill("")
 
     page.wait_for_timeout(1000)
 
+    # Enter new query
     search_input.first.fill(query)
 
     page.wait_for_timeout(1500)
@@ -960,6 +1096,7 @@ def search_program_and_download(
         )
 
     if safe_count(search_button, page) == 0:
+
         raise ScraperError(
             "Search button not found"
         )
@@ -969,6 +1106,7 @@ def search_program_and_download(
         page
     )
 
+    # Wait for results
     try:
 
         page.wait_for_load_state(
@@ -982,7 +1120,7 @@ def search_program_and_download(
     page.wait_for_timeout(5000)
 
     # =====================================================
-    # SELECT ALL RECORDS
+    # SELECT ALL RESULTS
     # =====================================================
 
     print(
@@ -1006,6 +1144,7 @@ def search_program_and_download(
 
     ensure_download_dir()
 
+    # Wait for download event
     with page.expect_download(
         timeout=120000
     ) as download_info:
@@ -1034,10 +1173,13 @@ def search_program_and_download(
 
 
 # =========================================================
-# PLAYWRIGHT INSTALL
+# PLAYWRIGHT INSTALLER
 # =========================================================
 
 def install_playwright_browsers():
+    """
+    Install Chromium browser binaries.
+    """
 
     try:
 
@@ -1060,7 +1202,7 @@ def install_playwright_browsers():
 
 
 # =========================================================
-# RUN SCRAPER
+# MAIN SCRAPER RUNNER
 # =========================================================
 
 def run_scraper(
@@ -1069,6 +1211,9 @@ def run_scraper(
     queries: List[str],
     headless: bool = True,
 ) -> List[Dict[str, Any]]:
+    """
+    Main scraper execution function.
+    """
 
     results = []
 
@@ -1076,26 +1221,31 @@ def run_scraper(
 
         try:
 
+            # Launch browser
             browser = playwright.chromium.launch(
                 headless=headless
             )
 
         except PlaywrightError:
 
+            # Install browsers if missing
             install_playwright_browsers()
 
             browser = playwright.chromium.launch(
                 headless=headless
             )
 
+        # Create browser context
         context = browser.new_context(
             accept_downloads=True
         )
 
+        # Create browser page
         page = context.new_page()
 
         try:
 
+            # Try restoring session
             cookies_loaded = load_cookies(
                 context
             )
@@ -1118,6 +1268,7 @@ def run_scraper(
 
                 page.wait_for_timeout(5000)
 
+            # Login if needed
             if not is_session_active(page):
 
                 login_with_credentials(
@@ -1126,10 +1277,12 @@ def run_scraper(
                     password
                 )
 
+            # Open search program page
             navigate_to_search_program(
                 page
             )
 
+            # Process all queries
             for query in queries:
 
                 try:
@@ -1159,24 +1312,28 @@ def run_scraper(
 
         finally:
 
+            # Close browser
             browser.close()
 
     return results
 
 
 # =========================================================
-# MAIN
+# SCRIPT ENTRYPOINT
 # =========================================================
 
 if __name__ == "__main__":
 
+    # Load credentials
     email, password = get_env_credentials()
 
+    # Example queries
     queries = [
         "Master of Accountancy",
         "PhD Accounting",
     ]
 
+    # Run scraper
     result = run_scraper(
         email=email,
         password=password,
@@ -1184,6 +1341,7 @@ if __name__ == "__main__":
         headless=False,
     )
 
+    # Print final results
     print(
         json.dumps(
             result,
