@@ -23,6 +23,9 @@ from typing import Any, Dict, List, Optional, Tuple
 # Load environment variables from .env
 from dotenv import load_dotenv
 
+# Excel merging
+import pandas as pd
+
 # Playwright sync API imports
 from playwright.sync_api import (
     Error as PlaywrightError,
@@ -1039,6 +1042,104 @@ def click_download_to_excel(
     )
 
 
+def _download_current_page(
+    page: Page,
+    query: str,
+    page_index: int = 1,
+) -> Path:
+    """
+    Select all records on the current page and download that page's Excel.
+    Returns the saved Path.
+    """
+
+    # Select current page records
+    click_select_all_checkbox(page)
+
+    # Trigger download flow for this page
+    click_full_download_button(page)
+
+    click_select_fields_button(page)
+
+    click_modal_select_all(page)
+
+    ensure_download_dir()
+
+    # Wait for download event
+    with page.expect_download(timeout=120000) as download_info:
+
+        click_download_to_excel(page)
+
+    download = download_info.value
+
+    suggested = download.suggested_filename or f"download_page_{page_index}.xlsx"
+
+    # Make path; include page index to ensure ordering
+    output_path = _make_output_path(suggested, f"{query}_page{page_index}")
+
+    download.save_as(str(output_path))
+
+    print(f"Downloaded page {page_index}: {output_path}")
+
+    # Unselect the current page records to avoid hitting selection limits
+    try:
+
+        # Clicking 'Select All' again should toggle/unselect the current page
+        click_select_all_checkbox(page)
+
+        page.wait_for_timeout(1000)
+
+        print(f"Unselected page {page_index}")
+
+    except Exception:
+
+        print(
+            f"Warning: failed to unselect records on page {page_index}"
+        )
+
+    return output_path
+
+
+def _merge_excels(
+    paths: List[Path],
+    output_path: Optional[Path] = None,
+) -> Path:
+    """
+    Merge multiple Excel files into a single Excel file.
+
+    - Reads each file with pandas, concatenates rows, writes combined file.
+    - Returns Path to combined file.
+    """
+
+    if not paths:
+        raise ScraperError("No files to merge")
+
+    dfs = []
+
+    for p in paths:
+
+        try:
+            df = pd.read_excel(p)
+            dfs.append(df)
+        except Exception as exc:
+            raise ScraperError(f"Failed reading Excel {p}: {exc}")
+
+    combined = pd.concat(dfs, ignore_index=True, sort=False)
+
+    if output_path is None:
+        # Use query-derived name from first path
+        ts = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+        output_path = DOWNLOAD_DIR / f"combined_{ts}.xlsx"
+
+    try:
+        combined.to_excel(output_path, index=False, engine="openpyxl")
+    except Exception as exc:
+        raise ScraperError(f"Failed writing combined Excel: {exc}")
+
+    print(f"Merged {len(paths)} files -> {output_path}")
+
+    return output_path
+
+
 # =========================================================
 # SEARCH + DOWNLOAD FLOW
 # =========================================================
@@ -1123,53 +1224,54 @@ def search_program_and_download(
     # SELECT ALL RESULTS
     # =====================================================
 
-    print(
-        f"Selecting all records for: "
-        f"{query}"
-    )
+    print(f"Starting per-page downloads for: {query}")
 
-    select_all_results_across_pages(page)
+    page_files: List[Path] = []
 
-    print("All records selected")
+    page_index = 1
 
-    # =====================================================
-    # DOWNLOAD FLOW
-    # =====================================================
+    # Loop through pagination, downloading each page separately
+    while True:
 
-    click_full_download_button(page)
+        print(f"Processing page {page_index}")
 
-    click_select_fields_button(page)
+        # Download current page
+        path = _download_current_page(page, query, page_index)
 
-    click_modal_select_all(page)
+        page_files.append(path)
 
-    ensure_download_dir()
+        # Move to next page if available
+        has_next = click_next_pagination(page)
 
-    # Wait for download event
-    with page.expect_download(
-        timeout=120000
-    ) as download_info:
+        if not has_next:
 
-        click_download_to_excel(page)
+            print("Reached final page")
 
-    download = download_info.value
+            break
 
-    suggested = (
-        download.suggested_filename
-        or "download.xlsx"
-    )
+        page_index += 1
 
-    output_path = _make_output_path(
-        suggested,
-        query
-    )
+    # If only one page file, return it directly
+    if len(page_files) == 1:
 
-    download.save_as(str(output_path))
+        return page_files[0]
 
-    print(
-        f"Downloaded: {output_path}"
-    )
+    # Merge multiple page files into a single workbook
+    combined_suggested = f"combined_{_sanitize_slug(query)}.xlsx"
 
-    return output_path
+    combined_path = _make_output_path(combined_suggested, query)
+
+    merged = _merge_excels(page_files, output_path=combined_path)
+
+    # Cleanup individual page files
+    for p in page_files:
+
+        try:
+            p.unlink()
+        except Exception:
+            print(f"Warning: failed to delete temp file {p}")
+
+    return merged
 
 
 # =========================================================
