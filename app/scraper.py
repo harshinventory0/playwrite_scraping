@@ -333,63 +333,126 @@ def login_with_credentials(
     Login to CourseFinder AI.
     """
 
-    # Find login button
-    login_button = page.locator(
-        'button:has-text("Login")'
-    )
+    # Try to open the login flow from wherever we are.
+    login_selectors = [
+        'button:has-text("Login")',
+        'button:has-text("Login to coursefinder.ai")',
+        'text="Login to coursefinder.ai"',
+        'a:has-text("Login")',
+        'text="Log in"',
+    ]
 
-    login_button.first.wait_for(
-        state="visible",
-        timeout=DEFAULT_TIMEOUT_MS
-    )
+    clicked_login = False
 
-    safe_click(
-        login_button.first,
-        page
-    )
+    for sel in login_selectors:
 
-    page.wait_for_timeout(3000)
+        try:
+            locator = page.locator(sel)
 
-    # Fill email
-    email_input = page.locator(
-        'input[type="email"]'
-    )
+            if safe_count(locator, page) == 0:
+                continue
 
+            # Click the first visible candidate
+            for i in range(locator.count()):
+                try:
+                    cand = locator.nth(i)
+
+                    if not cand.is_visible():
+                        continue
+
+                    handle = cand.element_handle()
+
+                    if handle:
+                        page.evaluate("(el) => el.click()", handle)
+                    else:
+                        safe_click(cand, page)
+
+                    clicked_login = True
+                    break
+
+                except Exception:
+                    continue
+
+            if clicked_login:
+                break
+
+        except Exception:
+            continue
+
+    # Give the login screen time to appear (or we might already be on it)
+    page.wait_for_timeout(2000)
+
+    # Wait for email input to appear
+    email_input = page.locator('input[type="email"]')
+
+    try:
+        email_input.first.wait_for(state="visible", timeout=15000)
+    except Exception:
+        # If email field not visible, maybe we're already authenticated or on a different flow
+        if is_session_active(page):
+            return
+        raise ScraperError("Unable to locate email input during login")
+
+    # Fill email and proceed
     email_input.first.fill(email)
 
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(500)
 
-    # Continue
-    continue_button = page.locator(
-        'button:has-text("Continue")'
-    )
+    # Click Login button to proceed to password page
+    login_btn = page.locator('button:has-text("Login")')
 
-    safe_click(
-        continue_button.first,
-        page
-    )
+    if safe_count(login_btn, page) > 0:
+        try:
+            safe_click(login_btn.first, page)
+        except Exception:
+            raise ScraperError("Failed to click Login button after email submission")
+    else:
+        raise ScraperError("Login button not found after email input")
 
-    page.wait_for_timeout(3000)
+    # Wait for either password input or email validation error
+    try:
+        page.wait_for_timeout(2000)
 
-    # Fill password
-    password_input = page.locator(
-        'input[type="password"]'
-    )
+        password_input = page.locator('input[type="password"]')
 
+        password_input.first.wait_for(state="visible", timeout=15000)
+
+    except Exception:
+        # Check for email validation messages
+        error_loc = page.locator('text="No account found"')
+
+        if safe_count(error_loc, page) > 0:
+            raise ScraperError("No account found with this email")
+
+        # Try other common messages
+        error_any = page.locator('text="No account"')
+
+        if safe_count(error_any, page) > 0:
+            raise ScraperError("Email not recognized during login")
+
+        # If password not visible but no explicit error, wait briefly and try again
+        try:
+            password_input.first.wait_for(state="visible", timeout=5000)
+        except Exception:
+            raise ScraperError("Password input did not appear after email submission")
+
+    # Fill password and submit
     password_input.first.fill(password)
 
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(500)
 
-    # Submit login
-    continue_button = page.locator(
-        'button:has-text("Continue")'
-    )
+    # Click Continue button to complete login
+    submit = page.locator('button:has-text("Continue")')
 
-    safe_click(
-        continue_button.first,
-        page
-    )
+    if safe_count(submit, page) > 0:
+        try:
+            safe_click(submit.first, page)
+        except Exception:
+            raise ScraperError("Failed to click Continue button after password submission")
+    else:
+        raise ScraperError("Continue button not found after password input")
 
+    # Give dashboard time to load
     page.wait_for_timeout(5000)
 
     # Save session cookies
@@ -1370,14 +1433,35 @@ def run_scraper(
 
                 page.wait_for_timeout(5000)
 
-            # Login if needed
-            if not is_session_active(page):
+            # If cookies weren't restored, force the login flow. If cookies
+            # were restored but session appears inactive, also attempt login.
+            if not cookies_loaded or not is_session_active(page):
 
                 login_with_credentials(
                     page,
                     email,
                     password
                 )
+
+                # Verify login succeeded. If not, raise an error to avoid
+                # navigating the dashboard while still unauthenticated.
+                login_ok = False
+
+                try:
+                    # give the app some time to finish redirects
+                    for _ in range(8):
+                        if is_session_active(page):
+                            login_ok = True
+                            break
+                        page.wait_for_timeout(1000)
+                except Exception:
+                    pass
+
+                if not login_ok:
+
+                    raise ScraperError(
+                        "Login did not complete successfully"
+                    )
 
             # Open search program page
             navigate_to_search_program(
