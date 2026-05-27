@@ -15,6 +15,7 @@ A FastAPI + Playwright automation project for scraping program data from CourseF
 - Download full Excel exports
 - Headless or visible browser execution
 - Error handling and retry-safe utilities
+- Exporting and Selecting limit is 25 only, So added one by one page export and combine them.
 
 ---
 
